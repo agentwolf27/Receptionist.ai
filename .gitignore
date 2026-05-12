@@ -30,8 +30,10 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env*
+# env files (secrets — allow .env.example)
+.env
+.env.*
+!.env.example
 
 # vercel
 .vercel
@@ -43,7 +45,10 @@ next-env.d.ts
 /src/generated/prisma
 
 # database
+dev.db
 *.db
 *.db-journal
 prisma/dev.db
 prisma/*.db
+# never track parent workspace clone inside this app
+.agency-agents/
