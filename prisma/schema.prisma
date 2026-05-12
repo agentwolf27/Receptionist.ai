@@ -1,0 +1,164 @@
+// AI Receptionist — Prisma schema
+// SQLite for local dev. Swap `provider` and DATABASE_URL for Postgres/Supabase in production.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  passwordHash  String
+  name          String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  business      Business?
+}
+
+model Business {
+  id            String          @id @default(cuid())
+  userId        String          @unique
+  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name          String
+  industry      String?
+  description   String?
+  phone         String?
+  email         String?
+  address       String?
+  timezone      String          @default("America/New_York")
+  greeting      String?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  hours             BusinessHour[]
+  services          Service[]
+  appointmentTypes  AppointmentType[]
+  faqs              FAQ[]
+  conversations     Conversation[]
+  bookings          Booking[]
+  aiConfig          AIConfig?
+}
+
+model BusinessHour {
+  id          String   @id @default(cuid())
+  businessId  String
+  business    Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  // 0 = Sunday ... 6 = Saturday
+  dayOfWeek   Int
+  openTime    String   // "09:00"
+  closeTime   String   // "17:00"
+  isClosed    Boolean  @default(false)
+
+  @@unique([businessId, dayOfWeek])
+}
+
+model Service {
+  id              String   @id @default(cuid())
+  businessId      String
+  business        Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  name            String
+  description     String?
+  durationMinutes Int      @default(30)
+  priceCents      Int      @default(0)
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+
+  appointmentTypes AppointmentType[]
+  bookings         Booking[]
+}
+
+model AppointmentType {
+  id              String   @id @default(cuid())
+  businessId      String
+  business        Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  serviceId       String?
+  service         Service? @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+  name            String
+  description     String?
+  durationMinutes Int      @default(30)
+  bufferMinutes   Int      @default(0)
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+
+  bookings        Booking[]
+}
+
+model FAQ {
+  id          String   @id @default(cuid())
+  businessId  String
+  business    Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  question    String
+  answer      String
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+}
+
+model Conversation {
+  id            String     @id @default(cuid())
+  businessId    String
+  business      Business   @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  channel       String     @default("chat") // chat | voice | sms
+  callerName    String?
+  callerPhone   String?
+  callerEmail   String?
+  status        String     @default("open") // open | resolved | escalated
+  summary       String?
+  estimatedValueCents Int  @default(0)
+  startedAt     DateTime   @default(now())
+  endedAt       DateTime?
+
+  messages      Message[]
+  bookings      Booking[]
+}
+
+model Message {
+  id              String       @id @default(cuid())
+  conversationId  String
+  conversation    Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role            String       // user | assistant | system | tool
+  content         String
+  metadata        String?      // JSON-encoded extras (tool calls, etc.)
+  createdAt       DateTime     @default(now())
+}
+
+model Booking {
+  id                String           @id @default(cuid())
+  businessId        String
+  business          Business         @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  conversationId    String?
+  conversation      Conversation?    @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+  serviceId         String?
+  service           Service?         @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+  appointmentTypeId String?
+  appointmentType   AppointmentType? @relation(fields: [appointmentTypeId], references: [id], onDelete: SetNull)
+  customerName      String
+  customerPhone     String?
+  customerEmail     String?
+  startsAt          DateTime
+  endsAt            DateTime
+  notes             String?
+  status            String           @default("confirmed") // confirmed | pending | cancelled | completed
+  confirmationSentAt DateTime?
+  confirmationChannel String?                                 // sms | email | both
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+}
+
+model AIConfig {
+  id              String   @id @default(cuid())
+  businessId      String   @unique
+  business        Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  voice           String   @default("friendly") // friendly | professional | playful
+  customPrompt    String?  // override the auto-generated prompt
+  escalationPhone String?
+  escalationEmail String?
+  model           String   @default("mock-llm-v1")
+  temperature     Float    @default(0.7)
+  onboardingCompleted Boolean @default(false)
+  updatedAt       DateTime @updatedAt
+}
