@@ -151,28 +151,6 @@ export async function chatTurn(input: ChatTurnInput): Promise<ChatTurnResult> {
 
   const llm = getLLMProvider();
 
-  // #region agent log
-  fetch("http://127.0.0.1:7476/ingest/bc5d65cb-9c9c-493f-8288-b695909b0baa", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "f43a4f" },
-    body: JSON.stringify({
-      sessionId: "f43a4f",
-      runId: "post-fix",
-      hypothesisId: "C",
-      location: "receptionist.ts:chatTurn:beforeLLM",
-      message: "messages assembled for LLM",
-      data: {
-        msgCount: messages.length,
-        roleTails: messages.map((m) => m.role[0]).join(""),
-        convRowCount: conversation.messages.length,
-        hasServicesBlock: /\nServices:\n/.test(llmSystemPrompt),
-        dbActiveServices: business.services.filter((s) => s.isActive).length,
-      },
-      timestamp: Date.now(),
-    }),
-  }).catch(() => {});
-  // #endregion
-
   const out = await llm.complete({
     systemPrompt: llmSystemPrompt,
     messages,

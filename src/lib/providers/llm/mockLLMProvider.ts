@@ -247,46 +247,6 @@ export const mockLLMProvider: LLMProvider = {
 
     const intent = detectIntent(text);
 
-    // #region agent log
-    {
-      const roleTails = input.messages.map((m) => m.role[0]).join("");
-      let lastAssistantHasDraft = false;
-      for (let i = input.messages.length - 1; i >= 0; i--) {
-        const m = input.messages[i];
-        if (m?.role !== "assistant" || !m.name) continue;
-        try {
-          const md = JSON.parse(m.name) as { bookingDraft?: unknown };
-          lastAssistantHasDraft = Boolean(md?.bookingDraft);
-        } catch {
-          lastAssistantHasDraft = false;
-        }
-        break;
-      }
-      fetch("http://127.0.0.1:7476/ingest/bc5d65cb-9c9c-493f-8288-b695909b0baa", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "f43a4f" },
-        body: JSON.stringify({
-          sessionId: "f43a4f",
-          runId: "post-fix",
-          hypothesisId: "A,C,D,E",
-          location: "mockLLMProvider.ts:complete:afterIntent",
-          message: "mock turn snapshot",
-          data: {
-            intent,
-            hasPreviousDraft: Boolean(previousDraft),
-            smalltalkNoDraft: intent === "smalltalk" && !previousDraft,
-            msgCount: input.messages.length,
-            roleTails,
-            textLen: text.length,
-            lastAssistantHasDraft,
-            catalogLen: business.services.length,
-          },
-          timestamp: Date.now(),
-        }),
-      }).catch(() => {});
-    }
-    // #endregion
-
     if (intent === "escalate") {
       return {
         reply:
@@ -330,28 +290,6 @@ export const mockLLMProvider: LLMProvider = {
       });
 
       const missing = nextMissingSlot(draft);
-
-      // #region agent log
-      fetch("http://127.0.0.1:7476/ingest/bc5d65cb-9c9c-493f-8288-b695909b0baa", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "f43a4f" },
-        body: JSON.stringify({
-          sessionId: "f43a4f",
-          runId: "post-fix",
-          hypothesisId: "B,D",
-          location: "mockLLMProvider.ts:complete:bookPath",
-          message: "slot fill after merge",
-          data: {
-            extractedName: Boolean(name),
-            missing,
-            draftHasCustomerName: Boolean(draft.customerName),
-            catalogLen: business.services.length,
-            extractedService: Boolean(service),
-          },
-          timestamp: Date.now(),
-        }),
-      }).catch(() => {});
-      // #endregion
 
       if (
         missing === "serviceName" &&
