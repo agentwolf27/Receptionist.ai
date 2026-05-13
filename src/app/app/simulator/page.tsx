@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { buildSystemPrompt } from "@/lib/ai/system-prompt";
+import { isUsingGroq } from "@/lib/providers/llm";
 import { Simulator } from "./simulator";
 import { CollapsiblePrompt } from "./collapsible-prompt";
 
@@ -26,7 +27,7 @@ export default async function SimulatorPage() {
           </div>
           <Badge variant="secondary" className="gap-1">
             <Sparkles className="h-3 w-3" />
-            Mock LLM
+            {isUsingGroq() ? "Groq" : "Mock LLM"}
           </Badge>
         </CardHeader>
         <CardContent className="flex-1">
