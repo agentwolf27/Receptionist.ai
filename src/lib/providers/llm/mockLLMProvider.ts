@@ -93,6 +93,17 @@ function extractName(text: string): string | undefined {
   return m?.[1];
 }
 
+/** Single-line reply that looks like a person’s name (e.g. "vish") during slot fill. */
+function tryBareCustomerName(text: string): string | undefined {
+  const t = text.trim();
+  if (t.length < 2 || t.length > 80) return undefined;
+  if (!/^[A-Za-z][A-Za-z'-]*(?:\s+[A-Za-z][A-Za-z'-]*){0,3}$/.test(t)) return undefined;
+  if (/\b(what|how|when|where|why|book|service|appointment|tomorrow|today|cleaning|whitening)\b/i.test(t)) {
+    return undefined;
+  }
+  return t;
+}
+
 function extractPhone(text: string): string | undefined {
   // Min 8 chars total (covers short forms like "555-0142") with at least one separator.
   const m = /(\+?\d[\d\s().-]{6,}\d)/.exec(text);
@@ -105,8 +116,30 @@ function extractEmail(text: string): string | undefined {
 }
 
 function extractServiceName(text: string, services: ParsedBusiness["services"]): string | undefined {
-  // Containment score: how much of the service name appears in the user's text.
-  // Divides by the service-name token count so long user sentences aren't penalized.
+  if (!services.length) return undefined;
+
+  const normalize = (s: string) =>
+    s
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+
+  const normalizedUser = normalize(text);
+  if (!normalizedUser) return undefined;
+
+  // Substring match (handles "teeth cleaning" vs catalog "Teeth cleaning").
+  let contained: { name: string; len: number } | null = null;
+  for (const s of services) {
+    const sn = normalize(s.name);
+    if (!sn) continue;
+    if (normalizedUser.includes(sn) || (sn.length >= 4 && sn.includes(normalizedUser))) {
+      if (!contained || sn.length > contained.len) contained = { name: s.name, len: sn.length };
+    }
+  }
+  if (contained) return contained.name;
+
+  // Token overlap: service tokens found in user text (relaxed threshold).
   const userSet = new Set(tokens(text));
   let best: { name: string; score: number } | null = null;
   for (const s of services) {
@@ -114,7 +147,7 @@ function extractServiceName(text: string, services: ParsedBusiness["services"]):
     if (!nameTokens.length) continue;
     const overlap = nameTokens.filter((t) => userSet.has(t)).length;
     const score = overlap / nameTokens.length;
-    if (score >= 0.5 && (!best || score > best.score)) best = { name: s.name, score };
+    if (score >= 0.34 && (!best || score > best.score)) best = { name: s.name, score };
   }
   return best?.name;
 }
@@ -214,6 +247,46 @@ export const mockLLMProvider: LLMProvider = {
 
     const intent = detectIntent(text);
 
+    // #region agent log
+    {
+      const roleTails = input.messages.map((m) => m.role[0]).join("");
+      let lastAssistantHasDraft = false;
+      for (let i = input.messages.length - 1; i >= 0; i--) {
+        const m = input.messages[i];
+        if (m?.role !== "assistant" || !m.name) continue;
+        try {
+          const md = JSON.parse(m.name) as { bookingDraft?: unknown };
+          lastAssistantHasDraft = Boolean(md?.bookingDraft);
+        } catch {
+          lastAssistantHasDraft = false;
+        }
+        break;
+      }
+      fetch("http://127.0.0.1:7476/ingest/bc5d65cb-9c9c-493f-8288-b695909b0baa", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "f43a4f" },
+        body: JSON.stringify({
+          sessionId: "f43a4f",
+          runId: "post-fix",
+          hypothesisId: "A,C,D,E",
+          location: "mockLLMProvider.ts:complete:afterIntent",
+          message: "mock turn snapshot",
+          data: {
+            intent,
+            hasPreviousDraft: Boolean(previousDraft),
+            smalltalkNoDraft: intent === "smalltalk" && !previousDraft,
+            msgCount: input.messages.length,
+            roleTails,
+            textLen: text.length,
+            lastAssistantHasDraft,
+            catalogLen: business.services.length,
+          },
+          timestamp: Date.now(),
+        }),
+      }).catch(() => {});
+    }
+    // #endregion
+
     if (intent === "escalate") {
       return {
         reply:
@@ -223,14 +296,25 @@ export const mockLLMProvider: LLMProvider = {
     }
 
     if (intent === "smalltalk" && !previousDraft) {
+      const hasAssistantReply = input.messages.some((m) => m.role === "assistant");
       const greeting =
         business.greeting ??
         `Hi! Thanks for contacting ${business.name}. How can I help you today?`;
+      if (hasAssistantReply) {
+        return {
+          reply: `Sure — how can I help with ${business.name} today?`,
+          intent: "smalltalk",
+        };
+      }
       return { reply: greeting, intent: "smalltalk" };
     }
 
     if (intent === "book_appointment" || previousDraft) {
-      const name = extractName(text);
+      const name =
+        extractName(text) ??
+        (previousDraft && !String(previousDraft.customerName ?? "").trim()
+          ? tryBareCustomerName(text)
+          : undefined);
       const phone = extractPhone(text);
       const email = extractEmail(text);
       const service = extractServiceName(text, business.services);
@@ -246,6 +330,45 @@ export const mockLLMProvider: LLMProvider = {
       });
 
       const missing = nextMissingSlot(draft);
+
+      // #region agent log
+      fetch("http://127.0.0.1:7476/ingest/bc5d65cb-9c9c-493f-8288-b695909b0baa", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "f43a4f" },
+        body: JSON.stringify({
+          sessionId: "f43a4f",
+          runId: "post-fix",
+          hypothesisId: "B,D",
+          location: "mockLLMProvider.ts:complete:bookPath",
+          message: "slot fill after merge",
+          data: {
+            extractedName: Boolean(name),
+            missing,
+            draftHasCustomerName: Boolean(draft.customerName),
+            catalogLen: business.services.length,
+            extractedService: Boolean(service),
+          },
+          timestamp: Date.now(),
+        }),
+      }).catch(() => {});
+      // #endregion
+
+      if (
+        missing === "serviceName" &&
+        business.services.length &&
+        /\b(what|which|list|show|tell me)\b/i.test(text) &&
+        /\bservices?\b/i.test(text)
+      ) {
+        const list = business.services
+          .map((s) => `• ${s.name} (${s.durationMinutes} min)`)
+          .join("\n");
+        return {
+          reply: `Here's what we offer:\n${list}\n\nWhich one would you like to book?`,
+          intent: "book_appointment",
+          bookingDraft: draft,
+        };
+      }
+
       if (missing) {
         return {
           reply: askForSlot(missing, business.name),

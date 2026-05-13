@@ -68,6 +68,24 @@ function tryParse(input: string, fmt: string, ref?: Date): Date | null {
   return isValid(d) ? d : null;
 }
 
+/** Ensures the mock LLM can parse `Services:` even when `customPrompt` omits that block. */
+function appendStructuredServicesIfMissing(
+  prompt: string,
+  services: { name: string; durationMinutes: number; priceCents: number; isActive: boolean }[]
+): string {
+  const active = services.filter((s) => s.isActive);
+  if (!active.length) return prompt;
+  if (/\nServices:\n/.test(prompt)) return prompt;
+  const body = active
+    .map((s) => {
+      const price =
+        s.priceCents > 0 ? `, $${(s.priceCents / 100).toFixed(2)}` : "";
+      return `- ${s.name} (${s.durationMinutes} min${price})`;
+    })
+    .join("\n");
+  return `${prompt}\n\nServices:\n${body}`;
+}
+
 export interface ChatTurnInput {
   businessId: string;
   conversationId?: string;
@@ -117,6 +135,10 @@ export async function chatTurn(input: ChatTurnInput): Promise<ChatTurnResult> {
   });
 
   const systemPrompt = buildSystemPrompt(business);
+  const llmSystemPrompt = appendStructuredServicesIfMissing(
+    systemPrompt,
+    business.services
+  );
 
   const messages: ChatMessage[] = [
     ...conversation.messages.map((m) => ({
@@ -128,8 +150,31 @@ export async function chatTurn(input: ChatTurnInput): Promise<ChatTurnResult> {
   ];
 
   const llm = getLLMProvider();
+
+  // #region agent log
+  fetch("http://127.0.0.1:7476/ingest/bc5d65cb-9c9c-493f-8288-b695909b0baa", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "f43a4f" },
+    body: JSON.stringify({
+      sessionId: "f43a4f",
+      runId: "post-fix",
+      hypothesisId: "C",
+      location: "receptionist.ts:chatTurn:beforeLLM",
+      message: "messages assembled for LLM",
+      data: {
+        msgCount: messages.length,
+        roleTails: messages.map((m) => m.role[0]).join(""),
+        convRowCount: conversation.messages.length,
+        hasServicesBlock: /\nServices:\n/.test(llmSystemPrompt),
+        dbActiveServices: business.services.filter((s) => s.isActive).length,
+      },
+      timestamp: Date.now(),
+    }),
+  }).catch(() => {});
+  // #endregion
+
   const out = await llm.complete({
-    systemPrompt,
+    systemPrompt: llmSystemPrompt,
     messages,
     temperature: business.aiConfig?.temperature ?? 0.7,
   });
