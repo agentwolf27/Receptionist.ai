@@ -1,4 +1,5 @@
 import type {
+  ChatMessage,
   LLMCompletionInput,
   LLMCompletionOutput,
   LLMProvider,
@@ -6,6 +7,12 @@ import type {
 } from "../types";
 
 type GroqChatRole = "system" | "user" | "assistant";
+
+function isGroqUserMessage(
+  m: ChatMessage
+): m is ChatMessage & { role: "user" | "assistant" } {
+  return m.role === "user" || m.role === "assistant";
+}
 
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 
@@ -37,14 +44,15 @@ export function createGroqLLMProvider(apiKey: string): LLMProvider {
     name: "groq",
 
     async complete(input: LLMCompletionInput): Promise<LLMCompletionOutput> {
+      const userAssistantPart: { role: GroqChatRole; content: string }[] =
+        input.messages.filter(isGroqUserMessage).map((m) => ({
+          role: m.role,
+          content: m.content,
+        }));
+
       const messages: { role: GroqChatRole; content: string }[] = [
         { role: "system", content: input.systemPrompt + JSON_INSTRUCTION },
-        ...input.messages
-          .filter((m) => m.role === "user" || m.role === "assistant")
-          .map((m) => ({
-            role: m.role as Extract<GroqChatRole, "user" | "assistant">,
-            content: m.content,
-          })),
+        ...userAssistantPart,
       ];
 
       const res = await fetch(GROQ_URL, {
