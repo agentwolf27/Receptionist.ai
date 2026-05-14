@@ -2,16 +2,57 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Bot, Send, User } from "lucide-react";
+import { Bot, CalendarClock, Send, User } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import type { BookingDraft } from "@/lib/providers/types";
 
 interface UIMessage {
   role: "user" | "assistant";
   content: string;
   bookingCreatedId?: string;
+}
+
+function formatDraftLine(label: string, value: string | undefined) {
+  if (!value?.trim()) return null;
+  return (
+    <div className="flex justify-between gap-3 text-xs">
+      <span className="text-muted-foreground">{label}</span>
+      <span className="max-w-[65%] truncate font-medium text-foreground">{value}</span>
+    </div>
+  );
+}
+
+function BookingDraftPanel({
+  draft,
+}: {
+  draft: Partial<BookingDraft> | null;
+}) {
+  if (!draft) return null;
+  const rows = [
+    formatDraftLine("Name", draft.customerName),
+    formatDraftLine("Service", draft.serviceName),
+    formatDraftLine("Date", draft.preferredDate),
+    formatDraftLine("Time", draft.preferredTime),
+    formatDraftLine("Phone", draft.customerPhone),
+    formatDraftLine("Email", draft.customerEmail),
+  ].filter(Boolean);
+  if (rows.length === 0) return null;
+
+  return (
+    <Card className="border-dashed bg-muted/30 shadow-none">
+      <CardHeader className="flex flex-row items-center gap-2 space-y-0 py-3">
+        <CalendarClock className="h-4 w-4 text-muted-foreground" />
+        <CardTitle className="text-xs font-medium tracking-wide text-muted-foreground">
+          Booking progress (this chat)
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-1.5 pb-3 pt-0">{rows}</CardContent>
+    </Card>
+  );
 }
 
 export function Simulator({ greeting }: { greeting: string }) {
@@ -22,6 +63,8 @@ export function Simulator({ greeting }: { greeting: string }) {
   const [input, setInput] = useState("");
   const [pending, setPending] = useState(false);
   const [conversationId, setConversationId] = useState<string | undefined>();
+  const [bookingDraft, setBookingDraft] = useState<Partial<BookingDraft> | null>(null);
+  const [suggestedReplies, setSuggestedReplies] = useState<string[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -29,28 +72,57 @@ export function Simulator({ greeting }: { greeting: string }) {
       top: scrollRef.current.scrollHeight,
       behavior: "smooth",
     });
-  }, [messages.length, pending]);
+  }, [messages.length, pending, bookingDraft, suggestedReplies.length]);
 
-  async function send() {
-    const text = input.trim();
+  async function send(overrideText?: string) {
+    const text = (overrideText ?? input).trim();
     if (!text || pending) return;
-    setInput("");
+    if (!overrideText) setInput("");
     setMessages((m) => [...m, { role: "user", content: text }]);
     setPending(true);
+    setSuggestedReplies([]);
     try {
       const res = await fetch("/api/simulate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: text, conversationId }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error ?? "Failed");
+      const data = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        conversationId?: string;
+        reply?: string;
+        bookingCreatedId?: string;
+        intent?: string;
+        bookingDraft?: Partial<BookingDraft>;
+        suggestedReplies?: string[];
+      };
+      if (!res.ok) {
+        const msg = data?.error ?? "Request failed";
+        if (res.status === 401) toast.error("Session expired — sign in again.");
+        else if (res.status === 404) toast.error("Chat not found — try Reset.");
+        else toast.error(msg);
+        setMessages((m) => [
+          ...m,
+          { role: "assistant", content: "Something went wrong. You can try again or hit Reset." },
+        ]);
+        return;
+      }
       setConversationId(data.conversationId);
+      setBookingDraft(
+        typeof data.bookingDraft === "object" && data.bookingDraft !== null
+          ? data.bookingDraft
+          : null
+      );
+      if (Array.isArray(data.suggestedReplies) && data.suggestedReplies.length > 0) {
+        setSuggestedReplies(data.suggestedReplies);
+      } else {
+        setSuggestedReplies([]);
+      }
       setMessages((m) => [
         ...m,
         {
           role: "assistant",
-          content: data.reply,
+          content: data.reply ?? "",
           bookingCreatedId: data.bookingCreatedId,
         },
       ]);
@@ -60,14 +132,15 @@ export function Simulator({ greeting }: { greeting: string }) {
         });
         router.refresh();
       } else if (data.intent === "escalate") {
-        toast.warning("Conversation escalated to a human");
+        toast.warning("Escalated — your team can follow up in Conversations.");
+        router.refresh();
       }
     } catch (err) {
       console.error(err);
       toast.error("Couldn't reach the AI");
       setMessages((m) => [
         ...m,
-        { role: "assistant", content: "Sorry — I hit an error. Try again." },
+        { role: "assistant", content: "Sorry — I hit a network error. Try again." },
       ]);
     } finally {
       setPending(false);
@@ -76,12 +149,15 @@ export function Simulator({ greeting }: { greeting: string }) {
 
   function reset() {
     setConversationId(undefined);
+    setBookingDraft(null);
+    setSuggestedReplies([]);
     setMessages([{ role: "assistant", content: greeting }]);
   }
 
   return (
-    <div className="flex h-[calc(100vh-260px)] flex-col">
-      <div ref={scrollRef} className="flex-1 space-y-3 overflow-auto pr-1">
+    <div className="flex h-[calc(100vh-260px)] flex-col gap-3">
+      <BookingDraftPanel draft={bookingDraft} />
+      <div ref={scrollRef} className="min-h-0 flex-1 space-y-3 overflow-auto pr-1">
         {messages.map((m, i) => (
           <div
             key={i}
@@ -132,7 +208,26 @@ export function Simulator({ greeting }: { greeting: string }) {
           </div>
         ) : null}
       </div>
-      <div className="mt-3 flex gap-2 border-t pt-3">
+
+      {suggestedReplies.length > 0 ? (
+        <div className="flex flex-wrap gap-2">
+          {suggestedReplies.map((s) => (
+            <Button
+              key={s}
+              type="button"
+              variant="secondary"
+              size="sm"
+              className="h-auto max-w-full whitespace-normal rounded-full px-3 py-1.5 text-left text-xs font-normal"
+              disabled={pending}
+              onClick={() => void send(s)}
+            >
+              {s}
+            </Button>
+          ))}
+        </div>
+      ) : null}
+
+      <div className="mt-auto flex gap-2 border-t pt-3">
         <Input
           value={input}
           onChange={(e) => setInput(e.target.value)}

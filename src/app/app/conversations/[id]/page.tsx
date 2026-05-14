@@ -126,6 +126,30 @@ export default async function ConversationDetailPage({
         </Card>
       ) : null}
 
+      {convo.status === "escalated" ? (
+        <Card className="border-amber-500/35 bg-amber-500/5">
+          <CardHeader>
+            <CardTitle className="text-base">Human handoff</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2 text-sm">
+            {convo.escalatedReason ? (
+              <p>
+                <span className="font-medium text-foreground">What they said: </span>
+                {convo.escalatedReason}
+              </p>
+            ) : null}
+            {convo.escalatedCallback ? (
+              <p>
+                <span className="font-medium text-foreground">Callback: </span>
+                {convo.escalatedCallback}
+              </p>
+            ) : (
+              <p className="text-muted-foreground">No phone or email was detected in that message.</p>
+            )}
+          </CardContent>
+        </Card>
+      ) : null}
+
       <Card>
         <CardHeader>
           <CardTitle>Transcript</CardTitle>

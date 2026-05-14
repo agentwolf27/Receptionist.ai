@@ -110,6 +110,10 @@ model Conversation {
   status        String     @default("open") // open | resolved | escalated
   summary       String?
   estimatedValueCents Int  @default(0)
+  /// Last customer message (truncated) when they asked for a human — for staff triage.
+  escalatedReason   String?
+  /// Phone or email the customer gave in that escalation turn, if any.
+  escalatedCallback String?
   startedAt     DateTime   @default(now())
   endedAt       DateTime?
 

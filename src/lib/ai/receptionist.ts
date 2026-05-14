@@ -1,11 +1,11 @@
 import "server-only";
-import { addDays, addMinutes, parse, isValid } from "date-fns";
+import { addDays, addMinutes, parse, isValid, startOfDay, format, setHours, setMinutes } from "date-fns";
 import { prisma } from "@/lib/prisma";
 import { getLLMProvider } from "@/lib/providers/llm";
 import { getCalendarProvider } from "@/lib/providers/calendar";
 import { getSMSProvider } from "@/lib/providers/sms";
 import { getEmailProvider } from "@/lib/providers/email";
-import type { BookingDraft, ChatMessage } from "@/lib/providers/types";
+import type { AvailabilitySlot, BookingDraft, ChatMessage } from "@/lib/providers/types";
 import { buildSystemPrompt } from "./system-prompt";
 
 const DAY_WORDS: Record<string, number> = {
@@ -68,6 +68,35 @@ function tryParse(input: string, fmt: string, ref?: Date): Date | null {
   return isValid(d) ? d : null;
 }
 
+/** Email or plausible phone from free text (escalation / callback capture). */
+function extractCallbackFromText(text: string): string | undefined {
+  const email = /([A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,})/.exec(text)?.[1];
+  if (email) return email;
+  const phone = /(\+?\d[\d\s().-]{8,}\d)/.exec(text)?.[1]?.replace(/\s+/g, " ").trim();
+  if (phone && phone.replace(/\D/g, "").length >= 10) return phone;
+  return undefined;
+}
+
+/** Short example phrases the customer can tap to fix ambiguous date/time (any business). */
+function buildParseFixSuggestions(ref: Date = new Date()): string[] {
+  const t1 = setMinutes(setHours(addDays(ref, 1), 10), 0);
+  const t2 = setMinutes(setHours(addDays(ref, 1), 14), 30);
+  const t3 = setMinutes(setHours(addDays(ref, 4), 11), 0);
+  return [
+    `Tomorrow at ${format(t1, "h:mm a")}`,
+    `Tomorrow at ${format(t2, "h:mm a")}`,
+    `${format(t3, "EEEE")} at ${format(t3, "h:mm a")}`,
+  ];
+}
+
+function formatSlotSuggestion(d: Date): string {
+  return `${format(d, "EEEE MMM d")} at ${format(d, "h:mm a")}`;
+}
+
+function alternativesFromSlots(slots: AvailabilitySlot[], max: number): string[] {
+  return slots.slice(0, max).map((s) => formatSlotSuggestion(s.startsAt));
+}
+
 /** Ensures the mock LLM can parse `Services:` even when `customPrompt` omits that block. */
 function appendStructuredServicesIfMissing(
   prompt: string,
@@ -106,6 +135,8 @@ export interface ChatTurnResult {
   intent: string;
   bookingCreatedId?: string;
   bookingDraft?: BookingDraft;
+  /** Optional short phrases shown as quick-reply chips in the simulator (any tenant). */
+  suggestedReplies?: string[];
 }
 
 export async function chatTurn(input: ChatTurnInput): Promise<ChatTurnResult> {
@@ -170,6 +201,7 @@ export async function chatTurn(input: ChatTurnInput): Promise<ChatTurnResult> {
 
   let bookingCreatedId: string | undefined;
   let finalReply = out.reply;
+  let suggestedRepliesOut: string[] | undefined;
 
   if (out.intent === "book_appointment" && out.bookingDraft) {
     const draft = out.bookingDraft as BookingDraft;
@@ -188,23 +220,25 @@ export async function chatTurn(input: ChatTurnInput): Promise<ChatTurnResult> {
       const startsAt = parseNaturalDateTime(draft.preferredDate, draft.preferredTime);
 
       if (!startsAt) {
-        finalReply = `I couldn't quite parse "${draft.preferredDate} at ${draft.preferredTime}". Could you give me a specific date and time? For example: "Tuesday at 2pm" or "11/14 at 10:30am".`;
+        finalReply = `I couldn't quite parse "${draft.preferredDate} at ${draft.preferredTime}". Try one of these, or type your own date and time:`;
+        suggestedRepliesOut = buildParseFixSuggestions();
       } else {
         const calendar = getCalendarProvider();
+        const windowStart = startOfDay(addMinutes(startsAt, -120));
+        const windowEnd = addDays(windowStart, 14);
         const availability = await calendar.findAvailability({
           businessId: business.id,
-          rangeStart: startsAt,
-          rangeEnd: addMinutes(startsAt, 60),
+          rangeStart: windowStart,
+          rangeEnd: windowEnd,
           durationMinutes,
         });
 
-        const exact = availability.find(
-          (s) => +s.startsAt === +startsAt
-        );
+        const exact = availability.find((s) => +s.startsAt === +startsAt);
         const chosen = exact ?? availability[0];
 
         if (!chosen) {
-          finalReply = `That time isn't available. Could we try another day or time?`;
+          finalReply = `I couldn't find an open slot in the next two weeks for ${draft.serviceName}. Try a different day or time — here are a few examples you can send as-is:`;
+          suggestedRepliesOut = buildParseFixSuggestions();
         } else {
           const endsAt = addMinutes(chosen.startsAt, durationMinutes);
           const booking = await prisma.booking.create({
@@ -280,7 +314,17 @@ export async function chatTurn(input: ChatTurnInput): Promise<ChatTurnResult> {
                 : sentChannels[0] === "email"
                   ? "We just sent a confirmation by email."
                   : "We'll follow up shortly to confirm.";
-          finalReply = `You're all set, ${draft.customerName}! ${draft.serviceName} is booked for ${chosen.startsAt.toLocaleString()}. ${confirmCopy}`;
+          const slotNote =
+            exact || +chosen.startsAt === +startsAt
+              ? ""
+              : `That exact time wasn't open — I booked the nearest slot. `;
+          finalReply = `${slotNote}You're all set, ${draft.customerName}! ${draft.serviceName} is booked for ${chosen.startsAt.toLocaleString()}. ${confirmCopy}`;
+          if (!exact && availability.length > 1) {
+            suggestedRepliesOut = alternativesFromSlots(
+              availability.filter((s) => +s.startsAt !== +chosen.startsAt),
+              3
+            );
+          }
         }
       }
     }
@@ -313,9 +357,25 @@ export async function chatTurn(input: ChatTurnInput): Promise<ChatTurnResult> {
   }
 
   if (out.intent === "escalate") {
+    const escReason =
+      input.userMessage.trim().slice(0, 500) || "Customer asked for a teammate";
+    const escCallback = extractCallbackFromText(input.userMessage);
+    const escData: {
+      status: string;
+      escalatedReason: string;
+      escalatedCallback: string | null;
+      summary?: string;
+    } = {
+      status: "escalated",
+      escalatedReason: escReason,
+      escalatedCallback: escCallback ?? null,
+    };
+    if (!conversation.summary?.trim()) {
+      escData.summary = `Needs human · ${escReason.slice(0, 120)}${escReason.length > 120 ? "…" : ""}`;
+    }
     await prisma.conversation.update({
       where: { id: conversation.id },
-      data: { status: "escalated" },
+      data: escData,
     });
   }
   if (bookingCreatedId) {
@@ -337,5 +397,6 @@ export async function chatTurn(input: ChatTurnInput): Promise<ChatTurnResult> {
     intent: out.intent ?? "answer",
     bookingCreatedId,
     bookingDraft: out.bookingDraft as BookingDraft | undefined,
+    suggestedReplies: suggestedRepliesOut,
   };
 }

@@ -151,6 +151,7 @@ export default async function ConversationsPage({
                   <TableHead>Channel</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Booking</TableHead>
+                  <TableHead>Human handoff</TableHead>
                   <TableHead>Started</TableHead>
                   <TableHead />
                 </TableRow>
@@ -184,6 +185,15 @@ export default async function ConversationsPage({
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {c._count.bookings > 0 ? `${c._count.bookings} booked` : "—"}
+                    </TableCell>
+                    <TableCell className="max-w-[160px] text-xs text-muted-foreground">
+                      {c.status === "escalated" && c.escalatedReason ? (
+                        <span className="line-clamp-2" title={c.escalatedReason}>
+                          {c.escalatedReason}
+                        </span>
+                      ) : (
+                        "—"
+                      )}
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {formatDate(c.startedAt)}
