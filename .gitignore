@@ -52,3 +52,6 @@ prisma/dev.db
 prisma/*.db
 # never track parent workspace clone inside this app
 .agency-agents/
+
+# accidental sibling file (e.g. tool created empty "Receptionist.ai" next to real repo)
+/Receptionist.ai
