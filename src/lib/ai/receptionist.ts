@@ -86,6 +86,14 @@ function appendStructuredServicesIfMissing(
   return `${prompt}\n\nServices:\n${body}`;
 }
 
+/** Thrown when `conversationId` is set but no row exists for that id and business. */
+export class ConversationNotFoundError extends Error {
+  override readonly name = "ConversationNotFoundError";
+  constructor() {
+    super("Conversation not found");
+  }
+}
+
 export interface ChatTurnInput {
   businessId: string;
   conversationId?: string;
@@ -112,14 +120,17 @@ export async function chatTurn(input: ChatTurnInput): Promise<ChatTurnResult> {
     },
   });
 
-  let conversation = input.conversationId
-    ? await prisma.conversation.findUnique({
-        where: { id: input.conversationId },
-        include: { messages: { orderBy: { createdAt: "asc" } } },
-      })
-    : null;
-
-  if (!conversation) {
+  let conversation;
+  if (input.conversationId) {
+    const found = await prisma.conversation.findFirst({
+      where: { id: input.conversationId, businessId: business.id },
+      include: { messages: { orderBy: { createdAt: "asc" } } },
+    });
+    if (!found) {
+      throw new ConversationNotFoundError();
+    }
+    conversation = found;
+  } else {
     conversation = await prisma.conversation.create({
       data: { businessId: business.id, channel: "chat", status: "open" },
       include: { messages: { orderBy: { createdAt: "asc" } } },

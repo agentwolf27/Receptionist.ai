@@ -5,8 +5,18 @@ import crypto from "node:crypto";
 const COOKIE_NAME = "rcpt_session";
 const MAX_AGE_SECONDS = 60 * 60 * 24 * 14; // 14 days
 
-function secret() {
-  return process.env.SESSION_SECRET || "dev-secret-do-not-use-in-prod";
+function secret(): string {
+  const raw = process.env.SESSION_SECRET;
+  if (process.env.NODE_ENV === "production") {
+    const trimmed = raw?.trim();
+    if (!trimmed) {
+      throw new Error(
+        "SESSION_SECRET must be set to a non-empty value in production. Generate a strong random string and set it in your environment."
+      );
+    }
+    return trimmed;
+  }
+  return raw?.trim() || "dev-secret-do-not-use-in-prod";
 }
 
 function b64url(buf: Buffer | string) {

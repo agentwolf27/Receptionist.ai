@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { z } from "zod";
-import { chatTurn } from "@/lib/ai/receptionist";
+import { z, ZodError } from "zod";
+import { chatTurn, ConversationNotFoundError } from "@/lib/ai/receptionist";
 import { requireUser } from "@/lib/auth/auth";
 import { prisma } from "@/lib/prisma";
 
@@ -25,7 +25,20 @@ export async function POST(req: Request) {
     });
     return NextResponse.json(result);
   } catch (err) {
+    if (err instanceof ZodError) {
+      return NextResponse.json({ error: "Invalid request" }, { status: 400 });
+    }
+    if (err instanceof Error && err.message === "UNAUTHORIZED") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (err instanceof ConversationNotFoundError) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+    const isProd = process.env.NODE_ENV === "production";
     console.error(err);
+    if (isProd) {
+      return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
+    }
     const message = err instanceof Error ? err.message : "Failed";
     return NextResponse.json({ error: message }, { status: 500 });
   }
