@@ -1,37 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { motion, useScroll, useTransform } from "framer-motion";
 
-/** Unsplash — business / workspace imagery (hotlink OK for demos; swap for your own assets in production). */
-const LAYERS = [
-  "https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=2000&q=75",
-  "https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=2000&q=75",
-  "https://images.unsplash.com/photo-1600880292203-757bb62b4baf?auto=format&fit=crop&w=2000&q=75",
-] as const;
-
-function scrollWeights(): [number, number, number] {
-  if (typeof document === "undefined") return [1, 0, 0];
-  const el = document.documentElement;
-  const max = Math.max(1, el.scrollHeight - window.innerHeight);
-  const p = Math.min(1, Math.max(0, el.scrollTop / max));
-  if (p < 0.5) {
-    const w0 = 1 - 2 * p;
-    const w1 = 2 * p;
-    return [w0, w1, 0];
-  }
-  const q = p - 0.5;
-  const w1 = 1 - 2 * q;
-  const w2 = 2 * q;
-  return [0, w1, w2];
-}
-
-/**
- * Fixed full-viewport layers that crossfade as the user scrolls the page.
- * Optional: replace image URLs with `<video>` in public/ — see comment in map below.
- */
 export function ScrollCinematicBg() {
-  const [weights, setWeights] = useState<[number, number, number]>([1, 0, 0]);
   const [reducedMotion, setReducedMotion] = useState(false);
+  const { scrollY } = useScroll();
+  
+  // As user scrolls down, the background darkens to put focus on content
+  const overlayOpacity = useTransform(scrollY, [0, 1500], [0.1, 0.85]);
+  // Slowly move the gradients up as the user scrolls down
+  const yOffset1 = useTransform(scrollY, [0, 2000], ["0%", "30%"]);
+  const yOffset2 = useTransform(scrollY, [0, 2000], ["0%", "-30%"]);
 
   useEffect(() => {
     const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -39,26 +19,7 @@ export function ScrollCinematicBg() {
     const onMq = () => setReducedMotion(mq.matches);
     mq.addEventListener("change", onMq);
 
-    if (mq.matches) {
-      return () => mq.removeEventListener("change", onMq);
-    }
-
-    let frame = 0;
-    const onScroll = () => {
-      cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(() => setWeights(scrollWeights()));
-    };
-
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", onScroll, { passive: true });
-
-    return () => {
-      mq.removeEventListener("change", onMq);
-      cancelAnimationFrame(frame);
-      window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", onScroll);
-    };
+    return () => mq.removeEventListener("change", onMq);
   }, []);
 
   if (reducedMotion) {
@@ -71,26 +32,51 @@ export function ScrollCinematicBg() {
   }
 
   return (
-    <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden" aria-hidden>
-      {LAYERS.map((src, i) => (
-        <div
-          key={src}
-          className="absolute inset-0 overflow-hidden"
-          style={{
-            opacity: weights[i] * 0.58,
-            transition: "opacity 140ms ease-out",
+    <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden bg-background" aria-hidden>
+      {/* Animated Aurora Blobs */}
+      <div className="absolute inset-0 opacity-80 mix-blend-screen dark:mix-blend-lighten filter blur-[100px]">
+        {/* Blob 1 */}
+        <motion.div
+          style={{ y: yOffset1 }}
+          animate={{
+            x: ["0%", "20%", "-20%", "0%"],
+            scale: [1, 1.1, 0.9, 1],
           }}
-        >
-          <div
-            className="h-full w-full bg-cover bg-center motion-safe:animate-ken-burns"
-            style={{ backgroundImage: `url(${src})` }}
-          />
-        </div>
-      ))}
-      {/* To use video instead of an image for layer `i`: place e.g. /public/hero-1.mp4 and render
-          <video className="absolute inset-0 h-full w-full object-cover" src="/hero-1.mp4" muted playsInline loop /> */}
-      <div className="absolute inset-0 bg-gradient-to-b from-background/75 via-background/55 to-background/92 motion-safe:animate-shimmer-drift" />
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,color-mix(in_oklch,var(--primary)_12%,transparent),transparent)]" />
+          transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
+          className="absolute -top-[20%] -left-[10%] w-[60%] h-[60%] rounded-full bg-emerald-500/30"
+        />
+        {/* Blob 2 */}
+        <motion.div
+          style={{ y: yOffset2 }}
+          animate={{
+            x: ["0%", "-25%", "15%", "0%"],
+            scale: [1, 0.8, 1.2, 1],
+          }}
+          transition={{ duration: 30, repeat: Infinity, ease: "linear" }}
+          className="absolute top-[10%] -right-[10%] w-[50%] h-[50%] rounded-full bg-violet-600/30"
+        />
+        {/* Blob 3 */}
+        <motion.div
+          animate={{
+            x: ["0%", "15%", "-15%", "0%"],
+            y: ["0%", "20%", "-20%", "0%"],
+            scale: [1, 1.2, 0.8, 1],
+          }}
+          transition={{ duration: 35, repeat: Infinity, ease: "linear" }}
+          className="absolute top-[40%] left-[20%] w-[50%] h-[50%] rounded-full bg-blue-500/20"
+        />
+      </div>
+
+      {/* Grid Pattern overlay for tech aesthetic */}
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_0%,#000_70%,transparent_100%)]" />
+
+      {/* Scroll darkening overlay */}
+      <motion.div 
+        className="absolute inset-0 bg-black"
+        style={{ opacity: overlayOpacity }}
+      />
+      
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,color-mix(in_oklch,var(--primary)_15%,transparent),transparent)]" />
     </div>
   );
 }

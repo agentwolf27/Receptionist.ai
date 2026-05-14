@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import {
   Bot,
@@ -8,6 +10,7 @@ import {
   Sparkles,
   Workflow,
 } from "lucide-react";
+import { motion, Variants } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { DemoExpectationsSection } from "@/components/marketing/demo-expectations-section";
@@ -36,6 +39,21 @@ const FEATURES = [
     body: "Mocked Twilio, Vapi, OpenAI, and calendar adapters out of the box. Swap with one config flip when you're ready to go live.",
   },
 ];
+
+const containerVariants: Variants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1,
+    },
+  },
+};
+
+const itemVariants: Variants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 100 } },
+};
 
 export default function LandingPage() {
   return (
@@ -82,12 +100,16 @@ export default function LandingPage() {
       <main className="flex-1">
         <section className="relative overflow-hidden border-b border-border/50">
           <div className="mx-auto grid w-full max-w-6xl items-center gap-12 px-6 py-20 lg:grid-cols-2 lg:py-28">
-            <div className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-4 motion-safe:duration-700 motion-reduce:animate-none">
+            <motion.div 
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, ease: "easeOut" }}
+            >
               <Badge variant="secondary" className="mb-4 gap-1 shadow-sm">
                 <Sparkles className="h-3 w-3" />
                 Preview — AI back office for local businesses
               </Badge>
-              <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">
+              <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl text-gradient pb-2">
                 The AI receptionist that pays for itself by the second booking.
               </h1>
               <p className="mt-4 max-w-xl text-base text-muted-foreground sm:text-lg">
@@ -107,11 +129,16 @@ export default function LandingPage() {
                 <ShieldCheck className="h-4 w-4 shrink-0" />
                 Demo mode: mock providers by default — add your own keys when you&apos;re ready.
               </div>
-            </div>
+            </motion.div>
 
-            <div className="relative motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-right-4 motion-safe:duration-700 motion-safe:delay-150 motion-reduce:animate-none">
+            <motion.div 
+              initial={{ opacity: 0, x: 30 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.8, ease: "easeOut", delay: 0.2 }}
+              className="relative"
+            >
               <div className="absolute -inset-6 -z-10 rounded-3xl bg-gradient-to-br from-primary/20 via-emerald-500/10 to-violet-500/15 blur-2xl motion-safe:animate-pulse motion-reduce:animate-none" />
-              <div className="rounded-2xl border border-border/60 bg-card/85 p-4 shadow-2xl backdrop-blur-md">
+              <div className="glass-panel rounded-2xl p-4">
                 <div className="flex items-center gap-2 border-b border-border/50 pb-3">
                   <span className="h-2.5 w-2.5 rounded-full bg-red-400" />
                   <span className="h-2.5 w-2.5 rounded-full bg-yellow-400" />
@@ -135,38 +162,53 @@ export default function LandingPage() {
                   </ChatBubble>
                 </div>
               </div>
-            </div>
+            </motion.div>
           </div>
         </section>
 
         <section id="features" className="mx-auto w-full max-w-6xl px-6 py-20">
           <div className="mx-auto max-w-2xl text-center">
-            <h2 className="text-3xl font-semibold tracking-tight">The front desk that never sleeps</h2>
+            <h2 className="text-3xl font-semibold tracking-tight text-gradient pb-2">The front desk that never sleeps</h2>
             <p className="mt-3 text-muted-foreground">
               Everything a small business needs to capture every lead and book every appointment —
               without lifting the phone.
             </p>
           </div>
-          <div className="mt-12 grid gap-6 sm:grid-cols-2">
+          <motion.div 
+            variants={containerVariants}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-100px" }}
+            className="mt-12 grid gap-6 sm:grid-cols-2"
+          >
             {FEATURES.map((f) => (
-              <div
+              <motion.div
                 key={f.title}
-                className="group rounded-xl border border-border/60 bg-card/75 p-6 shadow-sm backdrop-blur-md transition-[transform,box-shadow,border-color] duration-300 hover:-translate-y-1 hover:border-primary/25 hover:shadow-lg motion-reduce:transform-none motion-reduce:transition-none"
+                variants={itemVariants}
+                whileHover={{ y: -5 }}
+                className="group glass-panel rounded-xl p-6 transition-colors duration-300 hover:border-primary/30"
               >
                 <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary transition-transform duration-300 group-hover:scale-110 motion-reduce:group-hover:scale-100">
                   <f.icon className="h-4 w-4" />
                 </span>
                 <h3 className="mt-4 font-semibold">{f.title}</h3>
                 <p className="mt-2 text-sm text-muted-foreground">{f.body}</p>
-              </div>
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
         </section>
 
-        <section id="how" className="border-t border-border/50 bg-muted/25 backdrop-blur-sm">
+        <section id="how" className="border-t border-border/50 bg-muted/25 backdrop-blur-sm relative overflow-hidden">
+          <div className="absolute inset-0 bg-grid-black/[0.02] dark:bg-grid-white/[0.02] -z-10" />
           <div className="mx-auto w-full max-w-6xl px-6 py-20">
-            <h2 className="text-3xl font-semibold tracking-tight">How it works</h2>
-            <ol className="mt-8 grid gap-6 md:grid-cols-3">
+            <h2 className="text-3xl font-semibold tracking-tight text-gradient pb-2">How it works</h2>
+            <motion.ol 
+              variants={containerVariants}
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, margin: "-100px" }}
+              className="mt-8 grid gap-6 md:grid-cols-3"
+            >
               {[
                 {
                   step: "1",
@@ -184,23 +226,24 @@ export default function LandingPage() {
                   body: "Test in the simulator, then go live with Twilio / Vapi. Track every conversation and booking from the dashboard.",
                 },
               ].map((s) => (
-                <li
+                <motion.li
                   key={s.step}
-                  className="rounded-xl border border-border/60 bg-card/80 p-6 shadow-sm backdrop-blur-md transition-transform duration-300 hover:-translate-y-0.5 motion-reduce:transform-none"
+                  variants={itemVariants}
+                  className="glass-panel rounded-xl p-6"
                 >
-                  <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
+                  <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground shadow-lg">
                     {s.step}
                   </span>
                   <h3 className="mt-4 font-semibold">{s.title}</h3>
                   <p className="mt-2 text-sm text-muted-foreground">{s.body}</p>
-                </li>
+                </motion.li>
               ))}
-            </ol>
+            </motion.ol>
           </div>
         </section>
 
         <section id="pricing" className="mx-auto w-full max-w-3xl px-6 py-20 text-center">
-          <h2 className="text-3xl font-semibold tracking-tight">Simple, honest pricing</h2>
+          <h2 className="text-3xl font-semibold tracking-tight text-gradient pb-2">Simple, honest pricing</h2>
           <p className="mt-3 text-muted-foreground">
             Start free with mock providers. Bring your own Twilio + OpenAI keys and pay only what
             the providers charge. We&apos;ll add hosted plans later.

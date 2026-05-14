@@ -123,3 +123,12 @@ body {
     animation: none;
   }
 }
+
+@layer utilities {
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-br from-foreground to-foreground/50;
+  }
+  .glass-panel {
+    @apply bg-card/60 backdrop-blur-2xl border border-border/50 shadow-2xl;
+  }
+}
