@@ -10,6 +10,9 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { DemoExpectationsSection } from "@/components/marketing/demo-expectations-section";
+import { DemoSiteBanner } from "@/components/marketing/demo-site-banner";
+import { LandingScrollShell } from "@/components/marketing/landing-scroll-shell";
 
 const FEATURES = [
   {
@@ -36,76 +39,85 @@ const FEATURES = [
 
 export default function LandingPage() {
   return (
-    <div className="flex min-h-screen flex-col">
-      <header className="sticky top-0 z-30 w-full border-b bg-background/80 backdrop-blur">
-        <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-6">
-          <Link href="/" className="flex items-center gap-2 font-semibold">
-            <span className="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-primary-foreground">
-              <Bot className="h-4 w-4" />
-            </span>
-            Receptionist<span className="text-muted-foreground">.ai</span>
-          </Link>
-          <nav className="hidden items-center gap-6 text-sm text-muted-foreground md:flex">
-            <a href="#features" className="hover:text-foreground">
-              Features
-            </a>
-            <a href="#how" className="hover:text-foreground">
-              How it works
-            </a>
-            <a href="#pricing" className="hover:text-foreground">
-              Pricing
-            </a>
-          </nav>
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" asChild>
-              <Link href="/login">Log in</Link>
-            </Button>
-            <Button asChild>
-              <Link href="/signup">Get started</Link>
-            </Button>
+    <LandingScrollShell>
+      <div className="sticky top-0 z-50 border-b border-border/40 bg-background/70 shadow-sm backdrop-blur-xl supports-[backdrop-filter]:bg-background/55">
+        <DemoSiteBanner />
+        <header className="w-full">
+          <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-6">
+            <Link href="/" className="flex items-center gap-2 font-semibold transition-opacity hover:opacity-90">
+              <span className="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-primary-foreground shadow-md">
+                <Bot className="h-4 w-4" />
+              </span>
+              Receptionist<span className="text-muted-foreground">.ai</span>
+            </Link>
+            <nav className="hidden items-center gap-6 text-sm text-muted-foreground md:flex">
+              <a href="#features" className="transition-colors hover:text-foreground">
+                Features
+              </a>
+              <a href="#how" className="transition-colors hover:text-foreground">
+                How it works
+              </a>
+              <a href="#pricing" className="transition-colors hover:text-foreground">
+                Pricing
+              </a>
+              <a
+                href="#demo-expectations"
+                className="transition-colors hover:text-amber-700 dark:hover:text-amber-300"
+              >
+                Demo notice
+              </a>
+            </nav>
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" asChild>
+                <Link href="/login">Log in</Link>
+              </Button>
+              <Button asChild>
+                <Link href="/signup">Get started</Link>
+              </Button>
+            </div>
           </div>
-        </div>
-      </header>
+        </header>
+      </div>
 
       <main className="flex-1">
-        <section className="relative overflow-hidden border-b">
+        <section className="relative overflow-hidden border-b border-border/50">
           <div className="mx-auto grid w-full max-w-6xl items-center gap-12 px-6 py-20 lg:grid-cols-2 lg:py-28">
-            <div>
-              <Badge variant="secondary" className="mb-4 gap-1">
+            <div className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-4 motion-safe:duration-700 motion-reduce:animate-none">
+              <Badge variant="secondary" className="mb-4 gap-1 shadow-sm">
                 <Sparkles className="h-3 w-3" />
-                New — AI back office for local businesses
+                Preview — AI back office for local businesses
               </Badge>
               <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">
                 The AI receptionist that pays for itself by the second booking.
               </h1>
               <p className="mt-4 max-w-xl text-base text-muted-foreground sm:text-lg">
-                Answer every call, every chat, every after-hours inquiry. Receptionist.ai
-                books appointments, answers FAQs, and sends confirmations — without
-                hiring another front-desk person.
+                Answer every call, every chat, every after-hours inquiry. Receptionist.ai books
+                appointments, answers FAQs, and sends confirmations — without hiring another
+                front-desk person.
               </p>
               <div className="mt-8 flex flex-wrap items-center gap-3">
-                <Button asChild size="lg">
+                <Button asChild size="lg" className="shadow-lg transition-transform hover:-translate-y-0.5 motion-reduce:hover:translate-y-0">
                   <Link href="/signup">Start free in 60 seconds</Link>
                 </Button>
-                <Button asChild size="lg" variant="outline">
+                <Button asChild size="lg" variant="outline" className="backdrop-blur-sm">
                   <Link href="/login">Sign in</Link>
                 </Button>
               </div>
               <div className="mt-6 flex items-center gap-2 text-xs text-muted-foreground">
-                <ShieldCheck className="h-4 w-4" />
-                No credit card. Runs locally with mock providers — swap to Twilio / OpenAI when ready.
+                <ShieldCheck className="h-4 w-4 shrink-0" />
+                Demo mode: mock providers by default — add your own keys when you&apos;re ready.
               </div>
             </div>
 
-            <div className="relative">
-              <div className="absolute -inset-6 -z-10 rounded-3xl bg-gradient-to-br from-primary/10 to-emerald-400/10 blur-2xl" />
-              <div className="rounded-2xl border bg-card p-4 shadow-xl">
-                <div className="flex items-center gap-2 border-b pb-3">
+            <div className="relative motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-right-4 motion-safe:duration-700 motion-safe:delay-150 motion-reduce:animate-none">
+              <div className="absolute -inset-6 -z-10 rounded-3xl bg-gradient-to-br from-primary/20 via-emerald-500/10 to-violet-500/15 blur-2xl motion-safe:animate-pulse motion-reduce:animate-none" />
+              <div className="rounded-2xl border border-border/60 bg-card/85 p-4 shadow-2xl backdrop-blur-md">
+                <div className="flex items-center gap-2 border-b border-border/50 pb-3">
                   <span className="h-2.5 w-2.5 rounded-full bg-red-400" />
                   <span className="h-2.5 w-2.5 rounded-full bg-yellow-400" />
                   <span className="h-2.5 w-2.5 rounded-full bg-emerald-400" />
                   <span className="ml-2 text-xs text-muted-foreground">
-                    live transcript — Maple Dental
+                    sample transcript — Maple Dental
                   </span>
                 </div>
                 <div className="mt-4 space-y-3 text-sm">
@@ -115,13 +127,11 @@ export default function LandingPage() {
                   <ChatBubble role="user">
                     I&apos;d like to book a cleaning, tomorrow if possible.
                   </ChatBubble>
-                  <ChatBubble role="assistant">
-                    Of course! Could I get your name?
-                  </ChatBubble>
+                  <ChatBubble role="assistant">Of course! Could I get your name?</ChatBubble>
                   <ChatBubble role="user">Alex Rivera, 555-0142.</ChatBubble>
                   <ChatBubble role="assistant">
-                    You&apos;re booked for a cleaning tomorrow at 2pm, Alex. Confirmation
-                    just sent to 555-0142.
+                    You&apos;re booked for a cleaning tomorrow at 2pm, Alex. Confirmation just sent
+                    to 555-0142.
                   </ChatBubble>
                 </div>
               </div>
@@ -131,18 +141,19 @@ export default function LandingPage() {
 
         <section id="features" className="mx-auto w-full max-w-6xl px-6 py-20">
           <div className="mx-auto max-w-2xl text-center">
-            <h2 className="text-3xl font-semibold tracking-tight">
-              The front desk that never sleeps
-            </h2>
+            <h2 className="text-3xl font-semibold tracking-tight">The front desk that never sleeps</h2>
             <p className="mt-3 text-muted-foreground">
-              Everything a small business needs to capture every lead and book every
-              appointment — without lifting the phone.
+              Everything a small business needs to capture every lead and book every appointment —
+              without lifting the phone.
             </p>
           </div>
           <div className="mt-12 grid gap-6 sm:grid-cols-2">
             {FEATURES.map((f) => (
-              <div key={f.title} className="rounded-xl border bg-card p-6">
-                <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <div
+                key={f.title}
+                className="group rounded-xl border border-border/60 bg-card/75 p-6 shadow-sm backdrop-blur-md transition-[transform,box-shadow,border-color] duration-300 hover:-translate-y-1 hover:border-primary/25 hover:shadow-lg motion-reduce:transform-none motion-reduce:transition-none"
+              >
+                <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary transition-transform duration-300 group-hover:scale-110 motion-reduce:group-hover:scale-100">
                   <f.icon className="h-4 w-4" />
                 </span>
                 <h3 className="mt-4 font-semibold">{f.title}</h3>
@@ -152,7 +163,7 @@ export default function LandingPage() {
           </div>
         </section>
 
-        <section id="how" className="border-t bg-muted/30">
+        <section id="how" className="border-t border-border/50 bg-muted/25 backdrop-blur-sm">
           <div className="mx-auto w-full max-w-6xl px-6 py-20">
             <h2 className="text-3xl font-semibold tracking-tight">How it works</h2>
             <ol className="mt-8 grid gap-6 md:grid-cols-3">
@@ -173,7 +184,10 @@ export default function LandingPage() {
                   body: "Test in the simulator, then go live with Twilio / Vapi. Track every conversation and booking from the dashboard.",
                 },
               ].map((s) => (
-                <li key={s.step} className="rounded-xl border bg-card p-6">
+                <li
+                  key={s.step}
+                  className="rounded-xl border border-border/60 bg-card/80 p-6 shadow-sm backdrop-blur-md transition-transform duration-300 hover:-translate-y-0.5 motion-reduce:transform-none"
+                >
                   <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
                     {s.step}
                   </span>
@@ -186,26 +200,37 @@ export default function LandingPage() {
         </section>
 
         <section id="pricing" className="mx-auto w-full max-w-3xl px-6 py-20 text-center">
-          <h2 className="text-3xl font-semibold tracking-tight">
-            Simple, honest pricing
-          </h2>
+          <h2 className="text-3xl font-semibold tracking-tight">Simple, honest pricing</h2>
           <p className="mt-3 text-muted-foreground">
-            Start free with mock providers. Bring your own Twilio + OpenAI keys and pay
-            only what the providers charge. We&apos;ll add hosted plans later.
+            Start free with mock providers. Bring your own Twilio + OpenAI keys and pay only what
+            the providers charge. We&apos;ll add hosted plans later.
           </p>
-          <Button asChild size="lg" className="mt-8">
+          <Button
+            asChild
+            size="lg"
+            className="mt-8 shadow-md transition-transform hover:-translate-y-0.5 motion-reduce:hover:translate-y-0"
+          >
             <Link href="/signup">Create your free account</Link>
           </Button>
         </section>
+
+        <DemoExpectationsSection />
       </main>
 
-      <footer className="border-t">
-        <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-8 text-sm text-muted-foreground">
+      <footer className="border-t border-border/60 bg-background/80 backdrop-blur-md">
+        <div className="mx-auto flex w-full max-w-6xl flex-col gap-3 px-6 py-8 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
           <span>© {new Date().getFullYear()} Receptionist.ai</span>
-          <span>Built with Next.js, Prisma, and a lot of espresso.</span>
+          <span className="max-w-md text-xs sm:text-right">
+            Built with Next.js &amp; Prisma. This deployment is a{" "}
+            <strong className="text-foreground">demo / preview</strong> — see{" "}
+            <a href="#demo-expectations" className="underline underline-offset-2">
+              expectations
+            </a>{" "}
+            before sharing widely.
+          </span>
         </div>
       </footer>
-    </div>
+    </LandingScrollShell>
   );
 }
 
@@ -220,8 +245,8 @@ function ChatBubble({
     <div
       className={
         role === "user"
-          ? "ml-auto max-w-[80%] rounded-2xl rounded-br-sm bg-primary px-3 py-2 text-primary-foreground"
-          : "mr-auto max-w-[80%] rounded-2xl rounded-bl-sm bg-muted px-3 py-2 text-foreground"
+          ? "ml-auto max-w-[80%] rounded-2xl rounded-br-sm bg-primary px-3 py-2 text-primary-foreground shadow-md"
+          : "mr-auto max-w-[80%] rounded-2xl rounded-bl-sm bg-muted/90 px-3 py-2 text-foreground shadow-sm backdrop-blur-sm"
       }
     >
       {children}

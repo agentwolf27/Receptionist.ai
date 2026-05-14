@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Receptionist.ai — AI receptionist for local businesses",
   description:
-    "An AI receptionist that answers calls and chats, books appointments, and sends confirmations — so small businesses never miss a customer.",
+    "Preview: an AI receptionist that answers calls and chats, books appointments, and sends confirmations — for testing and demos; not a production compliance guarantee.",
 };
 
 export default function RootLayout({

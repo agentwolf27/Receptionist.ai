@@ -89,3 +89,37 @@ body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
 }
+
+@keyframes marketing-ken-burns {
+  from {
+    transform: scale(1.05);
+  }
+  to {
+    transform: scale(1.14);
+  }
+}
+
+@keyframes marketing-shimmer-drift {
+  0%,
+  100% {
+    opacity: 0.84;
+  }
+  50% {
+    opacity: 0.99;
+  }
+}
+
+.animate-ken-burns {
+  animation: marketing-ken-burns 28s ease-in-out infinite alternate;
+}
+
+.animate-shimmer-drift {
+  animation: marketing-shimmer-drift 22s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-ken-burns,
+  .animate-shimmer-drift {
+    animation: none;
+  }
+}

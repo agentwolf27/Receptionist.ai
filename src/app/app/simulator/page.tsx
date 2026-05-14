@@ -22,7 +22,8 @@ export default async function SimulatorPage() {
           <div>
             <CardTitle>AI Receptionist Simulator</CardTitle>
             <CardDescription>
-              Test your receptionist exactly as a real customer would. Bookings are saved.
+              Test your receptionist exactly as a real customer would. Bookings are saved to your
+              dashboard for this preview account — not for real patient or production use.
             </CardDescription>
           </div>
           <Badge variant="secondary" className="gap-1">

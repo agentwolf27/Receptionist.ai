@@ -52,6 +52,14 @@ export default async function AppLayout({
       </aside>
 
       <div className="flex min-h-screen flex-col">
+        <p className="border-b border-amber-500/25 bg-amber-500/10 px-4 py-2 text-center text-[11px] leading-snug text-amber-950/90 dark:text-amber-100/85 sm:text-xs">
+          <strong className="font-semibold">Preview dashboard.</strong> Data and integrations are
+          for testing — see the public site&apos;s{" "}
+          <Link href="/#demo-expectations" className="font-medium underline underline-offset-2">
+            demo notice
+          </Link>{" "}
+          before sharing or entering sensitive information.
+        </p>
         <header className="flex h-16 items-center justify-between gap-4 border-b bg-background/80 px-6 backdrop-blur lg:px-8">
           <div className="flex items-center gap-2 lg:hidden">
             <Link href="/app" className="flex items-center gap-2 font-semibold">
